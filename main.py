@@ -5,6 +5,19 @@ live = []
 dead = []
 filebuilt = False
 
+class Player:
+    number = None
+    name = None
+    survivability = None
+    kills = 0
+    enc_of_death = None
+    placement = None
+
+    def __init__(self, number, name, survivability):
+        self.number = number
+        self.name = name
+        self.survivability = survivability
+
 
 # Core object for setup and running the simulation
 def setup_run():
@@ -15,12 +28,13 @@ def setup_run():
     print("")
     userinput = input("Would you like to include survivability scores in the simulation?\n(enter 'Y' for yes or 'N' for\
  no)")
-    if userinput == "y" or input == "Y":
+    if userinput.lower() == "y":
         surv = True
     else:
         surv = False
     print(simulation(surv))
     outoptions()
+
 
 # Build list of live players from .CSV input.
 def build(filelocation):
@@ -33,22 +47,12 @@ def build(filelocation):
             for i, row in enumerate(filereader):
                 if i >= 1:
                     print("Building player", i, "...", end="")
-                    # Format for character list objects: [number, name, survivability, kills, Death in encounter, placement]
-                    # Add Number
-                    character = [i]
-                    # Name and survivability
-                    character.extend(row)
-                    # Converting survivability to integer
-                    character.append(int(character.pop(2)))
-                    # Add Kills
-                    character.append(0)
-                    # Add encounter death
-                    character.append(0)
-                    # Add placement
-                    character.append(0)
-                    live.append(character)
+                    # Initialise new player object and add it to the list
+                    player = Player(i, row[0], int(row[1]))
+                    live.append(player)
                     print("Success!")
             filebuilt = True
+            inputFile.close()
             return "Player build complete!"
     except:
         print("There was an error reading your file. Please ensure the file\naddress is correct and that the file is\n\
@@ -58,6 +62,8 @@ properly formatted.")
 
 
 def simulation(surv):
+    global live
+    global dead
     encounter = 0
     print("Starting simulation...")
     while len(live) > 1:
@@ -73,61 +79,54 @@ def simulation(surv):
         # Calculate winner (survivability on/off)
         if surv:
             # With survivability
-            divisor = live[p1i][2] + live[p2i][2]
-            quotient = 1 / divisor
-            wincondition = quotient * live[p1i][2]
-            if r.random() < wincondition:
+            total = live[p1i].survivability + live[p2i].survivability
+            if r.random() < live[p1i].survivability / total:
                 # Player 1 wins
-                live[p1i][3] = live[p1i][3] + 1
-                print(live[p1i][1] + " beat " + live[p2i][1] + " in encounter #" + str(encounter) + ".")
-                print(live[p2i][1] + " has been eliminated.")
-                live[p2i][4] = encounter
-                live[p2i][5] = len(live)
-                dead.append(live[p2i].pop())
-                print(live[p1i][1] + " now has", live[p1i][3], "kills.")
+                winner = p1i
+                loser = p2i
             else:
                 # Player 2 wins
-                live[p2i][3] = live[p2i][3] + 1
-                print(live[p2i][1] + " beat " + live[p1i][1] + " in encounter #" + str(encounter) + ".")
-                print(live[p1i][1] + " has been eliminated.")
-                live[p1i][4] = encounter
-                live[p1i][5] = len(live)
-                dead.append(live[p1i].pop())
-                print(live[p2i][1] + " now has", live[p2i][3], "kills.")
+                winner = p2i
+                loser = p1i
         else:
             # No survivability
             if r.random() < 0.5:
                 # Player 1 wins
-                live[p1i][3] = live[p1i][3] + 1
-                print(live[p1i][1] + " beat " + live[p2i][1] + " in encounter #" + str(encounter) + ".")
-                print(live[p2i][1] + " has been eliminated.")
-                live[p2i][4] = encounter
-                live[p2i][5] = len(live)
-                dead.append(live[p2i].pop())
-                print(live[p1i][1] + " now has", live[p1i][3], "kills.")
+                winner = p1i
+                loser = p2i
             else:
                 # Player 2 wins
-                live[p2i][3] = live[p2i][3] + 1
-                print(live[p2i][1] + " beat " + live[p1i][1] + " in encounter #" + str(encounter) + ".")
-                print(live[p1i][1] + " has been eliminated.")
-                live[p1i][4] = encounter
-                live[p1i][5] = len(live)
-                dead.append(live[p1i].pop())
-                print(live[p2i][1] + " now has", live[p2i][3], "kills.")
+                winner = p2i
+                loser = p1i
+            # Result of encounter
+        live[winner].kills += 1
+        print(live[winner].name + " beat " + live[loser].name + " in encounter #" + str(encounter) + ".")
+        print(live[loser].name + " has been eliminated.")
+        live[loser].enc_of_death = encounter
+        live[loser].placement = len(live)
+        print(live[winner].name + " now has", live[winner].kills, "kills.")
+        dead.append(live.pop(loser))
+    live[0].placement = 1
     return "Simulation complete!"
 
 
 def exportresults():
+    global live
     if filebuilt:
         try:
             with open("results.csv", 'x', newline="") as csvfile:
                 csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_NONE)
-                csvwriter.writerow(['#'], ['Name'], ['Survivability'], ['Kills'], ['Encounter of Death'], ['Placement'])
-                for i in live:
-                    csvwriter.writerow([live[i][0]], [live[i][1]], [live[i][2]], [live[i][3]], [live[i][4]], [live[i][5]])
-        except:
-            print("We encountered an error creating your file. Ensure that there is no file called 'results.csv' in this\n\
-ogram's root folder, and try again. If you continue to see this error, inform the developers immediately.")
+                csvwriter.writerow(['#', 'Name', 'Survivability', 'Kills', 'Encounter of Death', 'Placement'])
+                for i, player in enumerate(live):
+                    csvwriter.writerow([player.number, player.name, player.survivability, player.kills,\
+                        player.enc_of_death, player.placement])
+                for i, player in enumerate(reversed(dead)):
+                    csvwriter.writerow([player.number, player.name, player.survivability, player.kills,\
+                        player.enc_of_death, player.placement])
+                print("\nResults exported successfully\n")
+        except Exception:
+            print("We encountered an error creating your file. Ensure that there is no file called 'results.csv' in\n\
+this program's root folder, and try again. If you continue to see this error, inform the developers immediately.")
     else:
         print("It seems no simulation has been completed. Please select a different option.")
     outoptions()
@@ -139,16 +138,20 @@ def outoptions():
     print("1)  Export results of the simulation")
     print("2)  Run another simulation")
     print("3)  Exit the program\n")
-    userinput = input("Please enter your choice as a single digit 1-3:")
-    if userinput == "1":
-        # Build and export results spreadsheet
-        exportresults()
-    elif userinput == "2":
-        # Restart simulation
-        setup_run()
-    elif userinput == "3":
-        print("Closing the program...")
-        exit()
+    while True:
+        userinput = input("Please enter your choice as a single digit 1-3:")
+        if userinput == "1":
+            # Create and export results spreadsheet
+            exportresults()
+        elif userinput == "2":
+            # Restart simulation
+            setup_run()
+        elif userinput == "3":
+            print("Closing the program...")
+            exit()
+        else:
+            print("We didn't recognise that response. Please try again.")
+
 
 # Welcome and input prompt
 print("Welcome to Battle Royale Simulator Version 2!")
