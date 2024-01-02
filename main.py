@@ -5,12 +5,13 @@ live = []
 dead = []
 filebuilt = False
 
+
 class Player:
     number = None
     name = None
     survivability = None
     kills = 0
-    enc_of_death = None
+    encounter_of_death = None
     placement = None
 
     def __init__(self, number, name, survivability):
@@ -26,7 +27,7 @@ def setup_run():
     if not filebuilt:
         outoptions()
     print("")
-    userinput = input("Would you like to include survivability scores in the simulation?\n(enter 'Y' for yes or 'N' for\
+    userinput = input("Would you like to use weighted randomizers in the simulation?\n(enter 'Y' for yes or 'N' for\
  no)")
     if userinput.lower() == "y":
         surv = True
@@ -54,7 +55,7 @@ def build(filelocation):
             filebuilt = True
             inputFile.close()
             return "Player build complete!"
-    except:
+    except Exception:
         print("There was an error reading your file. Please ensure the file\naddress is correct and that the file is\n\
 properly formatted.")
         filebuilt = False
@@ -71,38 +72,38 @@ def simulation(surv):
 
         print("Encounter #" + str(encounter) + ":")
         # Select players for an encounter
-        p2i = None
-        p1i = r.randint(0, len(live) - 1)
-        while p2i == p1i or p2i is None:
-            p2i = r.randint(0, len(live) - 1)
+        player2index = None
+        player1index = r.randint(0, len(live) - 1)
+        while player2index == player1index or player2index is None:
+            player2index = r.randint(0, len(live) - 1)
 
         # Calculate winner (survivability on/off)
         if surv:
             # With survivability
-            total = live[p1i].survivability + live[p2i].survivability
-            if r.random() < live[p1i].survivability / total:
+            total = live[player1index].survivability + live[player2index].survivability
+            if r.random() < live[player1index].survivability / total:
                 # Player 1 wins
-                winner = p1i
-                loser = p2i
+                winner = player1index
+                loser = player2index
             else:
                 # Player 2 wins
-                winner = p2i
-                loser = p1i
+                winner = player2index
+                loser = player1index
         else:
             # No survivability
             if r.random() < 0.5:
                 # Player 1 wins
-                winner = p1i
-                loser = p2i
+                winner = player1index
+                loser = player2index
             else:
                 # Player 2 wins
-                winner = p2i
-                loser = p1i
+                winner = player2index
+                loser = player1index
             # Result of encounter
         live[winner].kills += 1
         print(live[winner].name + " beat " + live[loser].name + " in encounter #" + str(encounter) + ".")
         print(live[loser].name + " has been eliminated.")
-        live[loser].enc_of_death = encounter
+        live[loser].encounter_of_death = encounter
         live[loser].placement = len(live)
         print(live[winner].name + " now has", live[winner].kills, "kills.")
         dead.append(live.pop(loser))
@@ -118,11 +119,11 @@ def exportresults():
                 csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_NONE)
                 csvwriter.writerow(['#', 'Name', 'Survivability', 'Kills', 'Encounter of Death', 'Placement'])
                 for i, player in enumerate(live):
-                    csvwriter.writerow([player.number, player.name, player.survivability, player.kills,\
-                        player.enc_of_death, player.placement])
+                    csvwriter.writerow([player.number, player.name, player.survivability, player.kills,
+                                        player.encounter_of_death, player.placement])
                 for i, player in enumerate(reversed(dead)):
-                    csvwriter.writerow([player.number, player.name, player.survivability, player.kills,\
-                        player.enc_of_death, player.placement])
+                    csvwriter.writerow([player.number, player.name, player.survivability, player.kills,
+                                        player.encounter_of_death, player.placement])
                 print("\nResults exported successfully\n")
         except Exception:
             print("We encountered an error creating your file. Ensure that there is no file called 'results.csv' in\n\
